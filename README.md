@@ -44,7 +44,7 @@ A professional wireless Nintendo DS controller for DeSmuME emulator on Linux. Co
 
 ```bash
 git clone https://github.com/yourusername/nds-websocket-controller.git
-cd nds-websocket-controller
+cd nds-websocket-controller/scripts
 ./install.sh
 ```
 
@@ -57,7 +57,7 @@ That's it! 🎉
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/nds-websocket-controller.git
-cd nds-websocket-controller
+cd nds-websocket-controller/scripts
 
 # Run installation script
 chmod +x install.sh
