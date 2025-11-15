@@ -1,1 +1,602 @@
-<!-- Your index-fixed.html content goes here -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NDS Controller</title>
+    <style>
+        :root {
+            --bg: #1f2121;
+            --surface: #262828;
+            --text: #f5f5f5;
+            --primary: #32b8c6;
+            --border: #4a4e4e;
+            --error: #ff5459;
+            --success: #32b8c6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        #app {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 12px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--error);
+        }
+
+        .status-dot.connected {
+            background: var(--success);
+        }
+
+        .header-right {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.2s;
+        }
+
+        .icon-btn:active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .touchscreen {
+            width: 256px;
+            height: 192px;
+            background: #000;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            position: relative;
+            touch-action: none;
+        }
+
+        .touch-indicator {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.1s;
+            transform: translate(-50%, -50%);
+        }
+
+        .touch-indicator.active {
+            opacity: 1;
+        }
+
+        .controller {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .d-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            align-self: start;
+        }
+
+        .d-pad .up { grid-column: 2; grid-row: 1; }
+        .d-pad .left { grid-column: 1; grid-row: 2; }
+        .d-pad .center { grid-column: 2; grid-row: 2; opacity: 0.3; cursor: default; }
+        .d-pad .right { grid-column: 3; grid-row: 2; }
+        .d-pad .down { grid-column: 2; grid-row: 3; }
+
+        .face-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            align-self: start;
+            justify-self: end;
+        }
+
+        .face-buttons .y { grid-column: 2; grid-row: 1; }
+        .face-buttons .x { grid-column: 3; grid-row: 2; }
+        .face-buttons .a { grid-column: 2; grid-row: 3; }
+        .face-buttons .b { grid-column: 1; grid-row: 2; }
+
+        .shoulder-buttons {
+            display: flex;
+            gap: 40px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .shoulder-buttons .l { flex: 1; }
+        .shoulder-buttons .r { flex: 1; text-align: right; }
+
+        .control-buttons {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .control-buttons button { flex: 1; }
+
+        .nds-button {
+            width: 64px;
+            height: 64px;
+            border: none;
+            border-radius: 50%;
+            background: #222222;
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.1s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        }
+
+        .nds-button:active, .nds-button.pressed {
+            transform: scale(0.95);
+            background: var(--primary);
+            box-shadow: 0 0 12px rgba(50, 184, 198, 0.5);
+        }
+
+        .shoulder-btn {
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 4px;
+            background: #222222;
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.1s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            touch-action: none;
+        }
+
+        .shoulder-btn:active, .shoulder-btn.pressed {
+            background: var(--primary);
+            box-shadow: 0 0 12px rgba(50, 184, 198, 0.5);
+        }
+
+        .control-btn {
+            flex: 1;
+            height: 40px;
+            border: none;
+            border-radius: 4px;
+            background: #222222;
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.1s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            touch-action: none;
+        }
+
+        .control-btn:active, .control-btn.pressed {
+            background: var(--primary);
+            box-shadow: 0 0 12px rgba(50, 184, 198, 0.5);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            width: 100%;
+            margin: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-group {
+            margin-bottom: 20px;
+        }
+
+        .settings-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .settings-group input[type="text"],
+        .settings-group input[type="number"],
+        .settings-group select {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .settings-group input[type="range"] {
+            width: 100%;
+        }
+
+        .settings-group input[type="color"] {
+            width: 80px;
+            height: 40px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .settings-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--bg);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .debug-log {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px;
+            height: 150px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: monospace;
+            margin-top: 10px;
+        }
+
+        .log-entry {
+            padding: 2px 0;
+            color: var(--primary);
+        }
+
+        .value-display {
+            display: inline-block;
+            background: var(--bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        #scan-results {
+            list-style: none;
+            padding: 0;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 8px;
+        }
+
+        #scan-results li {
+            padding: 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #scan-results li:hover {
+            background: rgba(50, 184, 198, 0.2);
+            border-color: var(--primary);
+        }
+
+        .section-divider {
+            margin: 20px 0;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <div class="header-left">
+                <h1 class="title">🎮 NDS Controller</h1>
+                <div class="connection-status">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Disconnected</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
+                <button class="icon-btn" id="helpBtn" title="Help">❓</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="touchscreen" id="touchscreen">
+                <div class="touch-indicator" id="touchIndicator"></div>
+            </div>
+
+            <div class="controller">
+                <div class="d-pad">
+                    <button class="nds-button dpad-btn up" data-button="up">↑</button>
+                    <button class="nds-button dpad-btn center" data-button="center">●</button>
+                    <button class="nds-button dpad-btn left" data-button="left">←</button>
+                    <button class="nds-button dpad-btn center" data-button="center">●</button>
+                    <button class="nds-button dpad-btn right" data-button="right">→</button>
+                    <button class="nds-button dpad-btn down" data-button="down">↓</button>
+                </div>
+
+                <div class="face-buttons">
+                    <button class="nds-button face-btn y" data-button="y">Y</button>
+                    <button class="nds-button face-btn x" data-button="x">X</button>
+                    <button class="nds-button face-btn a" data-button="a">A</button>
+                    <button class="nds-button face-btn b" data-button="b">B</button>
+                </div>
+            </div>
+
+            <div class="shoulder-buttons">
+                <button class="shoulder-btn l" data-button="l">L</button>
+                <button class="shoulder-btn r" data-button="r">R</button>
+            </div>
+
+            <div class="control-buttons">
+                <button class="control-btn" data-button="start">START</button>
+                <button class="control-btn" data-button="select">SELECT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="close-btn" id="closeSettings">×</button>
+            </div>
+
+            <!-- Connection Settings -->
+            <div class="settings-group">
+                <label for="serverHost">Server IP</label>
+                <input type="text" id="serverHost" placeholder="192.168.1.100">
+            </div>
+
+            <div class="settings-group">
+                <label for="serverPort">Port</label>
+                <input type="number" id="serverPort" value="8080" min="1" max="65535">
+            </div>
+
+            <div class="settings-group">
+                <label for="connectionType">Connection Type</label>
+                <select id="connectionType">
+                    <option value="websocket">WebSocket</option>
+                    <option value="http">HTTP Polling</option>
+                </select>
+            </div>
+
+            <div class="settings-group">
+                <label for="pollingRateSlider">Polling Rate: <span class="value-display" id="pollingRateValue">60</span> Hz</label>
+                <input type="range" id="pollingRateSlider" min="10" max="120" value="60">
+            </div>
+
+            <div class="settings-group">
+                <label>
+                    <input type="checkbox" id="hapticFeedback" checked>
+                    Enable Haptic Feedback
+                </label>
+            </div>
+
+            <div class="settings-group">
+                <button class="btn-primary" id="connectBtn">Connect</button>
+                <button class="btn-primary" id="disconnectBtn">Disconnect</button>
+            </div>
+
+            <!-- Network Scan Section -->
+            <div class="section-divider">
+                <div class="section-title">Network Scanner</div>
+                <button id="scan-button" class="btn-primary">Scan Network</button>
+                <ul id="scan-results"></ul>
+            </div>
+
+            <!-- Button Customization Section -->
+            <div class="section-divider">
+                <div class="section-title">Button Customization</div>
+                
+                <div class="settings-group">
+                    <label for="button-size-range">Button Size: <span class="value-display" id="button-size-value">64</span> px</label>
+                    <input type="range" id="button-size-range" min="40" max="120" value="64" step="1">
+                </div>
+                
+                <div class="settings-group">
+                    <label for="button-color-picker">Button Color:</label>
+                    <input type="color" id="button-color-picker" value="#222222">
+                </div>
+            </div>
+
+            <!-- Debug Log Section -->
+            <div class="section-divider">
+                <div class="section-title">Debug Log</div>
+                <div class="debug-log" id="debugLog"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div class="modal" id="helpModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Help & Documentation</h2>
+                <button class="close-btn" id="closeHelp">×</button>
+            </div>
+
+            <h3>Getting Started</h3>
+            <ol>
+                <li>Setup WebSocket server on POP!_OS</li>
+                <li>Enter server IP in Settings</li>
+                <li>Click Connect</li>
+                <li>Use the controller!</li>
+            </ol>
+
+            <h3>Data Format</h3>
+            <p>The app sends button states in JSON format:</p>
+            <pre><code>{"buttons":{"up":false,"down":false,"left":false,"right":false,"a":false,"b":false,"x":false,"y":false,"l":false,"r":false,"start":false,"select":false},"touchscreen":{"x":0,"y":0,"touched":false}}</code></pre>
+
+            <h3>Status Indicators</h3>
+            <ul>
+                <li>Green dot = Connected</li>
+                <li>Red dot = Disconnected</li>
+            </ul>
+
+            <h3>Tips</h3>
+            <ul>
+                <li>For best performance, use 5GHz WiFi if available</li>
+                <li>Adjust button size and color in settings</li>
+                <li>Use the network scan to find available servers</li>
+                <li>Enable haptic feedback for better feedback (if supported)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
